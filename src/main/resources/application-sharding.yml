@@ -1,0 +1,89 @@
+
+# ShardingSphere 5.5.0 分库分表配置
+# source_data 表按 business_time 进行日分片（yyyyMMdd）
+
+dataSources:
+  ds0:
+    dataSourceClassName: com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.0.137:3306/unit-01?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: password
+    initialSize: 5
+    minIdle: 5
+    maxActive: 20
+    maxWait: 60000
+    timeBetweenEvictionRunsMillis: 60000
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: SELECT 1
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    maxPoolPreparedStatementPerConnectionSize: 20
+
+rules:
+  - !SHARDING
+    tables:
+      source_data:
+        # 实际数据节点：使用行表达式定义 2024-2026 年的日表 (共 1095 张表)
+        # 格式：source_data_yyyyMMdd
+        actualDataNodes: ds0.source_data_$->{2024..2026}$->{[1,2,3,4,5,6,7,8,9,10,11,12].collect{String.format('%02d', it)}}$->{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31].collect{String.format('%02d', it)}}
+        # 分表策略：基于 business_time 字段 (按日分片)
+        tableStrategy:
+          standard:
+            shardingColumn: business_time
+            shardingAlgorithmName: source_data_algorithm
+        # 主键生成策略：雪花算法
+        keyGenerateStrategy:
+          column: id
+          keyGeneratorName: snowflake
+      
+
+    # 绑定表关系（避免笛卡尔积查询）
+    bindingTables:
+      - source_data
+
+    # 广播表（所有库表结构一致，不拆分）
+#    broadcastTables:
+#      - t_city
+#      - config_table
+#      - dict_table
+
+    # 分片算法配置（支持年、月、日三种策略）
+    shardingAlgorithms:
+      # source_data 分片算法（基于 business_time，按日分片）
+      source_data_algorithm:
+        type: CLASS_BASED
+        props:
+          algorithmClassName: com.datastream.algorithm.CommonTimeShardingAlgorithm
+          tablePrefix: source_data_
+          strategy: STANDARD # STANDARD:标准分片策略, COMPLEX:复合分片策略, HINT:强制路由策略
+          custom-strategy: DAY
+          shardingColumn: business_time
+
+      # source_data 分片算法
+#      source_data_daily_sharding:
+#        type: INLINE
+#        props:
+#          strategy: STANDARD # STANDARD:标准分片策略, COMPLEX:复合分片策略, HINT:强制路由策略
+#          algorithm-expression: source_data_$->{business_time.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"))}
+#          allow-range-query-with-inline-sharding-columns: true
+
+    # 主键生成器
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+        props:
+          worker-id: 1
+          max-vibration-offset: 4095
+
+props:
+  # SQL 日志显示
+  sql-show: true
+  # 检查表元数据一致性
+  check-table-metadata-consistency: false
+  # 允许范围查询（性能考虑，生产环境慎用）
+  allow-range-query-with-inline-sharding-columns: true
+  # 允许自定义算法返回不在 availableTargetNames 中的表名
+  acceptor-size: 1

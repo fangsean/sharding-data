@@ -1,0 +1,13 @@
+# 集成测试专用配置 - ShardingSphere 5.5.0
+spring:
+  datasource:
+    driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
+    url: jdbc:shardingsphere:classpath:application-sharding.yml
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+    sentinel:
+      enabled: false
