@@ -26,9 +26,10 @@ rules:
   - !SHARDING
     tables:
       source_data:
-        # 实际数据节点：定义最近 3 年的月表（共 36 张表，推荐方案）
-        actualDataNodes: ds0.source_data
-        # 分表策略：基于 business_time 字段（按月分片）
+        # 实际数据节点：使用行表达式定义 2024-2026 年的日表 (共 1095 张表)
+        # 格式：source_data_yyyyMMdd
+        actualDataNodes: ds0.source_data_$->{2024..2026}$->{[1,2,3,4,5,6,7,8,9,10,11,12].collect{String.format('%02d', it)}}$->{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31].collect{String.format('%02d', it)}}
+        # 分表策略：基于 business_time 字段 (按日分片)
         tableStrategy:
           standard:
             shardingColumn: business_time

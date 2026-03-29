@@ -95,7 +95,8 @@ public class SourceDataController {
             SourceData data = new SourceData();
             data.setUserCode(userCodes[i % userCodes.length]);
             data.setUserName("用户" + (i + 1));
-            data.setBusinessTime(LocalDateTime.now().minusYears(2).minusMonths(i%13).minusDays(i%29));
+//            data.setBusinessTime(LocalDateTime.now().minusYears(2).minusMonths(i%13).minusDays(i%29));
+            data.setBusinessTime(LocalDateTime.now().minusYears(2).minusMonths(2).minusDays(i%29));
             data.setAmount(new BigDecimal("100.00").multiply(new BigDecimal(i + 1)));
             data.setStatus(i % 3);
             data.setRemark("测试数据 - " + (i + 1));
