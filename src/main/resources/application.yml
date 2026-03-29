@@ -1,6 +1,10 @@
 server:
   port: 8080
 spring:
+  # 排除 Druid 自动配置，使用 ShardingSphere 的数据源
+  autoconfigure:
+    exclude:
+      - com.alibaba.druid.spring.boot.autoconfigure.DruidDataSourceAutoConfigure
 #  main:
 #    allow-bean-definition-overriding: true
 #  profiles:

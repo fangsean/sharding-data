@@ -1,26 +1,12 @@
+
+# ShardingSphere 5.5.0 分库分表配置
+# source_data 表按 business_time 进行日分片（yyyyMMdd）
+
 dataSources:
   ds0:
     dataSourceClassName: com.alibaba.druid.pool.DruidDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
-    jdbc-url: jdbc:mysql://192.168.0.137:3306/unit-01?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: password
-    initialSize: 5
-    minIdle: 5
-    maxActive: 20
-    maxWait: 60000
-    timeBetweenEvictionRunsMillis: 60000
-    minEvictableIdleTimeMillis: 300000
-    validationQuery: SELECT 1
-    testWhileIdle: true
-    testOnBorrow: false
-    testOnReturn: false
-    poolPreparedStatements: true
-    maxPoolPreparedStatementPerConnectionSize: 20
-  ds1:
-    dataSourceClassName: com.alibaba.druid.pool.DruidDataSource
-    driverClassName: com.mysql.cj.jdbc.Driver
-    jdbc-url: jdbc:mysql://192.168.0.137:3306/unit-02?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://192.168.0.137:3306/unit-01?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: password
     initialSize: 5
@@ -39,60 +25,64 @@ dataSources:
 rules:
   - !SHARDING
     tables:
-      # 订单表基础表
-      t_ent_order:
-        # 真实表
-        actualDataNodes: ds$->{0..3}.t_ent_order
-        # 分库策略
-        databaseStrategy:
-          complex:
-            shardingColumns: id,ent_id
-            shardingAlgorithmName: hash-slot-algorithm
-      # 订单详情表
-      t_ent_order_detail:
-        actualDataNodes: ds$->{0..3}.t_ent_order_detail
-        # 分库策略
-        databaseStrategy:
-          complex:
-            shardingColumns:  id,ent_id
-            shardingAlgorithmName: hash-slot-algorithm
-      # 订单条目表
-      t_ent_order_item:
-        actualDataNodes: ds$->{0..3}.t_ent_order_item_$->{0..7}
-        # 分库策略
-        databaseStrategy:
-          complex:
-            shardingColumns: id,ent_id
-            shardingAlgorithmName: hash-slot-algorithm
-        # 分表策略
+      source_data:
+        # 实际数据节点：定义最近 3 年的月表（共 36 张表，推荐方案）
+        actualDataNodes: ds0.source_data
+        # 分表策略：基于 business_time 字段（按月分片）
         tableStrategy:
-          complex:
-            shardingColumns: id,ent_id
-            shardingAlgorithmName: hash-slot-table-algorithm
-    # 绑定表
+          standard:
+            shardingColumn: business_time
+            shardingAlgorithmName: source_data_algorithm
+        # 主键生成策略：雪花算法
+        keyGenerateStrategy:
+          column: id
+          keyGeneratorName: snowflake
+      
+
+    # 绑定表关系（避免笛卡尔积查询）
     bindingTables:
-      - t_ent_order,t_ent_order_detail
+      - source_data
 
-    # 分片算法
+    # 广播表（所有库表结构一致，不拆分）
+#    broadcastTables:
+#      - t_city
+#      - config_table
+#      - dict_table
+
+    # 分片算法配置（支持年、月、日三种策略）
     shardingAlgorithms:
-      hash-slot-algorithm:
+      # source_data 分片算法（基于 business_time，按日分片）
+      source_data_algorithm:
         type: CLASS_BASED
         props:
-          strategy: complex
-          algorithmClassName: cn.javayong.shardingjdbc5.spring.common.sharding.HashSlotAlgorithm
-      hash-slot-table-algorithm:
-        type: CLASS_BASED
-        props:
-          strategy: complex
-          algorithmClassName: cn.javayong.shardingjdbc5.spring.common.sharding.HashSlotAlgorithm
-          # 非默认值，直接对分片数取余
-          directIndex: true
+          algorithmClassName: com.datastream.algorithm.CommonTimeShardingAlgorithm
+          tablePrefix: source_data_
+          strategy: STANDARD # STANDARD:标准分片策略, COMPLEX:复合分片策略, HINT:强制路由策略
+          custom-strategy: DAY
+          shardingColumn: business_time
 
-  # 广播
-  - !BROADCAST
-    tables:
-      - t_city
+      # source_data 分片算法
+#      source_data_daily_sharding:
+#        type: INLINE
+#        props:
+#          strategy: STANDARD # STANDARD:标准分片策略, COMPLEX:复合分片策略, HINT:强制路由策略
+#          algorithm-expression: source_data_$->{business_time.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"))}
+#          allow-range-query-with-inline-sharding-columns: true
+
+    # 主键生成器
+    keyGenerators:
+      snowflake:
+        type: SNOWFLAKE
+        props:
+          worker-id: 1
+          max-vibration-offset: 4095
 
 props:
-  # 日志显示 SQL
+  # SQL 日志显示
   sql-show: true
+  # 检查表元数据一致性
+  check-table-metadata-consistency: false
+  # 允许范围查询（性能考虑，生产环境慎用）
+  allow-range-query-with-inline-sharding-columns: true
+  # 允许自定义算法返回不在 availableTargetNames 中的表名
+  acceptor-size: 1

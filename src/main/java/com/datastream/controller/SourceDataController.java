@@ -1,6 +1,12 @@
 package com.datastream.controller;
 
 import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.mapper.Mapper;
+import com.baomidou.mybatisplus.extension.conditions.query.LambdaQueryChainWrapper;
 import com.datastream.entity.SourceData;
 import com.datastream.service.SourceDataService;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +42,23 @@ public class SourceDataController {
         log.info("查询源数据，id: {}", id);
         SourceData data = sourceDataService.getById(id);
         return buildResponse(data);
+    }
+
+    /**
+     * 根据 ID 查询
+     */
+    @GetMapping("/{day}/{id}")
+    @SentinelResource(value = "getSourceDataByDayId", blockHandler = "handleBlock")
+    public List<SourceData> getById(@PathVariable String day, @PathVariable Long id) {
+        log.info("查询源数据，day: {}, id: {}", day, id);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        LocalDate date = LocalDate.parse(day, formatter);
+        LocalDateTime dateTime = date.atStartOfDay(); // 2024-01-01 00:00:00
+        LambdaQueryWrapper<SourceData> sourceDataWrapper = new LambdaQueryWrapper<>(SourceData.class);
+        sourceDataWrapper
+                .between(SourceData::getBusinessTime, dateTime, date.atTime(LocalTime.MAX)) // 2024-01-01 12:00:00
+                .eq(SourceData::getId, id);
+        return sourceDataService.list(sourceDataWrapper);
     }
 
     /**
@@ -69,7 +95,7 @@ public class SourceDataController {
             SourceData data = new SourceData();
             data.setUserCode(userCodes[i % userCodes.length]);
             data.setUserName("用户" + (i + 1));
-            data.setBusinessTime(LocalDateTime.now().minusMonths(i % 12));
+            data.setBusinessTime(LocalDateTime.now().minusYears(2).minusMonths(i%13).minusDays(i%29));
             data.setAmount(new BigDecimal("100.00").multiply(new BigDecimal(i + 1)));
             data.setStatus(i % 3);
             data.setRemark("测试数据 - " + (i + 1));

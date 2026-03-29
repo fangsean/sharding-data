@@ -1,4 +1,4 @@
-# 集成测试专用配置 - ShardingSphere 5.3.2
+# 集成测试专用配置 - ShardingSphere 5.5.0
 spring:
   datasource:
     driver-class-name: org.apache.shardingsphere.driver.ShardingSphereDriver
