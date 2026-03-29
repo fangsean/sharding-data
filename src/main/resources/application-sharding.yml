@@ -1,0 +1,98 @@
+dataSources:
+  ds0:
+    dataSourceClassName: com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbc-url: jdbc:mysql://192.168.0.137:3306/unit-01?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: password
+    initialSize: 5
+    minIdle: 5
+    maxActive: 20
+    maxWait: 60000
+    timeBetweenEvictionRunsMillis: 60000
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: SELECT 1
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    maxPoolPreparedStatementPerConnectionSize: 20
+  ds1:
+    dataSourceClassName: com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    jdbc-url: jdbc:mysql://192.168.0.137:3306/unit-02?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: password
+    initialSize: 5
+    minIdle: 5
+    maxActive: 20
+    maxWait: 60000
+    timeBetweenEvictionRunsMillis: 60000
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: SELECT 1
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    maxPoolPreparedStatementPerConnectionSize: 20
+
+rules:
+  - !SHARDING
+    tables:
+      # 订单表基础表
+      t_ent_order:
+        # 真实表
+        actualDataNodes: ds$->{0..3}.t_ent_order
+        # 分库策略
+        databaseStrategy:
+          complex:
+            shardingColumns: id,ent_id
+            shardingAlgorithmName: hash-slot-algorithm
+      # 订单详情表
+      t_ent_order_detail:
+        actualDataNodes: ds$->{0..3}.t_ent_order_detail
+        # 分库策略
+        databaseStrategy:
+          complex:
+            shardingColumns:  id,ent_id
+            shardingAlgorithmName: hash-slot-algorithm
+      # 订单条目表
+      t_ent_order_item:
+        actualDataNodes: ds$->{0..3}.t_ent_order_item_$->{0..7}
+        # 分库策略
+        databaseStrategy:
+          complex:
+            shardingColumns: id,ent_id
+            shardingAlgorithmName: hash-slot-algorithm
+        # 分表策略
+        tableStrategy:
+          complex:
+            shardingColumns: id,ent_id
+            shardingAlgorithmName: hash-slot-table-algorithm
+    # 绑定表
+    bindingTables:
+      - t_ent_order,t_ent_order_detail
+
+    # 分片算法
+    shardingAlgorithms:
+      hash-slot-algorithm:
+        type: CLASS_BASED
+        props:
+          strategy: complex
+          algorithmClassName: cn.javayong.shardingjdbc5.spring.common.sharding.HashSlotAlgorithm
+      hash-slot-table-algorithm:
+        type: CLASS_BASED
+        props:
+          strategy: complex
+          algorithmClassName: cn.javayong.shardingjdbc5.spring.common.sharding.HashSlotAlgorithm
+          # 非默认值，直接对分片数取余
+          directIndex: true
+
+  # 广播
+  - !BROADCAST
+    tables:
+      - t_city
+
+props:
+  # 日志显示 SQL
+  sql-show: true

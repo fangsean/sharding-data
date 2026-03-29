@@ -1,0 +1,146 @@
+package com.datastream.controller;
+
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.datastream.entity.SourceData;
+import com.datastream.service.SourceDataService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 源数据控制器
+ */
+@RestController
+@RequestMapping("/sourceData")
+@Slf4j
+@RequiredArgsConstructor
+public class SourceDataController {
+
+    private final SourceDataService sourceDataService;
+
+    /**
+     * 根据 ID 查询
+     */
+    @GetMapping("/{id}")
+    @SentinelResource(value = "getSourceDataById", blockHandler = "handleBlock")
+    public Map<String, Object> getById(@PathVariable Long id) {
+        log.info("查询源数据，id: {}", id);
+        SourceData data = sourceDataService.getById(id);
+        return buildResponse(data);
+    }
+
+    /**
+     * 保存数据（自动路由到对应分表）
+     */
+    @PostMapping
+    @SentinelResource(value = "saveSourceData", blockHandler = "handleBlock")
+    public Map<String, Object> save(@RequestBody SourceData data) {
+        log.info("保存源数据：{}", data);
+        
+        // 设置默认值
+        if (data.getBusinessTime() == null) {
+            data.setBusinessTime(LocalDateTime.now());
+        }
+        
+        boolean result = sourceDataService.save(data);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", result);
+        response.put("id", data.getId());
+        return response;
+    }
+
+    /**
+     * 批量插入测试数据
+     */
+    @PostMapping("/batch")
+    public Map<String, Object> batchInsert(@RequestParam int count) {
+        log.info("批量插入测试数据，count: {}", count);
+        
+        String[] userCodes = {"USER001", "USER002", "USER003", "USER004", "USER005"};
+        
+        for (int i = 0; i < count; i++) {
+            SourceData data = new SourceData();
+            data.setUserCode(userCodes[i % userCodes.length]);
+            data.setUserName("用户" + (i + 1));
+            data.setBusinessTime(LocalDateTime.now().minusMonths(i % 12));
+            data.setAmount(new BigDecimal("100.00").multiply(new BigDecimal(i + 1)));
+            data.setStatus(i % 3);
+            data.setRemark("测试数据 - " + (i + 1));
+            
+            sourceDataService.save(data);
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("inserted", count);
+        return response;
+    }
+
+    /**
+     * 根据时间范围查询
+     */
+    @GetMapping("/range")
+    @SentinelResource(value = "listByTimeRange", blockHandler = "handleBlock")
+    public Map<String, Object> listByTimeRange(
+            @RequestParam LocalDateTime startTime,
+            @RequestParam LocalDateTime endTime) {
+        log.info("根据时间范围查询：startTime={}, endTime={}", startTime, endTime);
+        List<SourceData> list = sourceDataService.listByTimeRange(startTime, endTime);
+        return buildListResponse(list);
+    }
+
+    /**
+     * 根据用户编码和时间范围查询
+     */
+    @GetMapping("/user/{userCode}")
+    @SentinelResource(value = "listByUserCode", blockHandler = "handleBlock")
+    public Map<String, Object> listByUserCode(
+            @PathVariable String userCode,
+            @RequestParam LocalDateTime startTime,
+            @RequestParam LocalDateTime endTime) {
+        log.info("根据用户编码和时间范围查询：userCode={}, startTime={}, endTime={}", userCode, startTime, endTime);
+        List<SourceData> list = sourceDataService.listByUserCodeAndTimeRange(userCode, startTime, endTime);
+        return buildListResponse(list);
+    }
+
+    /**
+     * 健康检查
+     */
+    @GetMapping("/health")
+    public String health() {
+        return "OK";
+    }
+
+    /**
+     * Sentinel 限流处理方法
+     */
+    public Map<String, Object> handleBlock(Exception ex) {
+        log.warn("请求被限流", ex);
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("message", "请求过于频繁，请稍后再试");
+        return response;
+    }
+
+    private Map<String, Object> buildResponse(SourceData data) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", data != null);
+        response.put("data", data);
+        return response;
+    }
+
+    private Map<String, Object> buildListResponse(List<SourceData> list) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("data", list);
+        response.put("size", list != null ? list.size() : 0);
+        return response;
+    }
+}

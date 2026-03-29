@@ -1,0 +1,104 @@
+server:
+  port: 8080
+spring:
+#  main:
+#    allow-bean-definition-overriding: true
+#  profiles:
+#    active: dev  # 默认激活 dev profile
+  application:
+    name: sharding-data-service
+  # 生产环境通过 Maven 占位符激活，开发/测试环境默认使用内置配置
+  # profiles:
+  #   active: @spring.profiles.active@
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        group: DEFAULT_GROUP
+      config:
+        enabled: false
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        refresh-enabled: true
+    sentinel:
+      enabled: false
+      transport:
+        dashboard: 127.0.0.1:8080
+        port: 8719
+      datasource:
+        ds1:
+          nacos:
+            server-addr: 127.0.0.1:8848
+            dataId: ${spring.application.name}-sentinel
+            groupId: DEFAULT_GROUP
+            rule-type: flow
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.datastream.entity
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+feign:
+  sentinel:
+    enabled: true  # 开启 Feign 的 Sentinel 支持
+  compression:
+    request:
+      enabled: true  # 开启请求压缩
+    response:
+      enabled: true  # 开启响应压缩
+  client:
+    config:
+      default:
+        connectTimeout: 5000  # 连接超时时间（毫秒）
+        readTimeout: 10000    # 读取超时时间（毫秒）
+        loggerLevel: FULL     # 日志级别
+
+# Resilience4j 配置（OpenFeign 默认熔断器）
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true  # 注册健康检查
+        slidingWindowSize: 10          # 滑动窗口大小
+        failureRateThreshold: 50       # 失败率阈值（%）
+        waitDurationInOpenState: 10000 # 打开状态等待时间（毫秒）
+        permittedNumberOfCallsInHalfOpenState: 3  # 半开状态允许的调用次数
+        automaticTransitionFromOpenToHalfOpenEnabled: true  # 自动从打开状态转换到半开状态
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 10s  # 超时时间
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+  # 禁用数据源指标收集，避免尝试创建默认数据源
+  metrics:
+    enable:
+      all: false
+
+logging:
+  level:
+    root: INFO
+    com.datastream: DEBUG
+    org.apache.shardingsphere: DEBUG
+    # Feign 日志级别（需要配合 Logger.Level Bean）
+    com.datastream.client.SourceDataClient: DEBUG
