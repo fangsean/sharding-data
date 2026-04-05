@@ -23,10 +23,13 @@
 
     <!-- 根据用户编码和时间范围查询 -->
     <select id="selectByUserCodeAndTimeRange" resultMap="BaseResultMap">
-        SELECT * FROM source_data
-        WHERE user_code = #{userCode}
-          AND business_time BETWEEN #{startTime} AND #{endTime}
-        ORDER BY business_time DESC
+        select s.* from
+        source_data s
+        inner join target_data t
+        on s.user_code = t.user_code
+        where s.business_time BETWEEN #{startTime} AND #{endTime}
+        and s.user_code = #{userCode}
+        ORDER BY s.business_time DESC
     </select>
 
 </mapper>

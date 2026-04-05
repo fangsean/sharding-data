@@ -11,6 +11,7 @@ import com.datastream.entity.SourceData;
 import com.datastream.service.SourceDataService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 /**
  * 源数据控制器
@@ -89,14 +91,15 @@ public class SourceDataController {
     public Map<String, Object> batchInsert(@RequestParam int count) {
         log.info("批量插入测试数据，count: {}", count);
         
-        String[] userCodes = {"USER001", "USER002", "USER003", "USER004", "USER005"};
-        
+        String[] userCodes = {"USER_0001", "USER_0002", "USER_0003", "USER_0004", "USER_0005"};
+        String[] number = {"0","1", "2", "3", "4", "5", "6", "7", "8", "9"};
+        Random random = new Random();
         for (int i = 0; i < count; i++) {
             SourceData data = new SourceData();
-            data.setUserCode(userCodes[i % userCodes.length]);
+            // USER_00013546 random
+            data.setUserCode(userCodes[i % userCodes.length] + number[random.nextInt(10)]+number[random.nextInt(10)]+number[random.nextInt(10)]+number[random.nextInt(10)]);
             data.setUserName("用户" + (i + 1));
-//            data.setBusinessTime(LocalDateTime.now().minusYears(2).minusMonths(i%13).minusDays(i%29));
-            data.setBusinessTime(LocalDateTime.now().minusYears(2).minusMonths(2).minusDays(i%29));
+            data.setBusinessTime(LocalDateTime.now().minusYears(2).minusMonths(3).minusDays(i%29));
             data.setAmount(new BigDecimal("100.00").multiply(new BigDecimal(i + 1)));
             data.setStatus(i % 3);
             data.setRemark("测试数据 - " + (i + 1));
@@ -116,8 +119,8 @@ public class SourceDataController {
     @GetMapping("/range")
     @SentinelResource(value = "listByTimeRange", blockHandler = "handleBlock")
     public Map<String, Object> listByTimeRange(
-            @RequestParam LocalDateTime startTime,
-            @RequestParam LocalDateTime endTime) {
+            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")@RequestParam LocalDateTime startTime,
+            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")@RequestParam LocalDateTime endTime) {
         log.info("根据时间范围查询：startTime={}, endTime={}", startTime, endTime);
         List<SourceData> list = sourceDataService.listByTimeRange(startTime, endTime);
         return buildListResponse(list);
@@ -130,8 +133,8 @@ public class SourceDataController {
     @SentinelResource(value = "listByUserCode", blockHandler = "handleBlock")
     public Map<String, Object> listByUserCode(
             @PathVariable String userCode,
-            @RequestParam LocalDateTime startTime,
-            @RequestParam LocalDateTime endTime) {
+            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")@RequestParam LocalDateTime startTime,
+            @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")@RequestParam LocalDateTime endTime) {
         log.info("根据用户编码和时间范围查询：userCode={}, startTime={}, endTime={}", userCode, startTime, endTime);
         List<SourceData> list = sourceDataService.listByUserCodeAndTimeRange(userCode, startTime, endTime);
         return buildListResponse(list);

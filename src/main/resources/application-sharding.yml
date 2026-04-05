@@ -21,6 +21,24 @@ dataSources:
     testOnReturn: false
     poolPreparedStatements: true
     maxPoolPreparedStatementPerConnectionSize: 20
+  ds1:
+    dataSourceClassName: com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.0.137:3306/unit-02?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: password
+    initialSize: 5
+    minIdle: 5
+    maxActive: 20
+    maxWait: 60000
+    timeBetweenEvictionRunsMillis: 60000
+    minEvictableIdleTimeMillis: 300000
+    validationQuery: SELECT 1
+    testWhileIdle: true
+    testOnBorrow: false
+    testOnReturn: false
+    poolPreparedStatements: true
+    maxPoolPreparedStatementPerConnectionSize: 20
 
 rules:
   - !SHARDING
@@ -28,7 +46,7 @@ rules:
       source_data:
         # 实际数据节点：使用行表达式定义 2024-2026 年的日表 (共 1095 张表)
         # 格式：source_data_yyyyMMdd
-        actualDataNodes: ds0.source_data_$->{2024..2026}$->{[1,2,3,4,5,6,7,8,9,10,11,12].collect{String.format('%02d', it)}}$->{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31].collect{String.format('%02d', it)}}
+        actualDataNodes: ds0.source_data,ds0.source_data_$->{2023..2026}$->{[1,2,3,4,5,6,7,8,9,10,11,12].collect{String.format('%02d', it)}}$->{[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31].collect{String.format('%02d', it)}}
         # 分表策略：基于 business_time 字段 (按日分片)
         tableStrategy:
           standard:
@@ -38,6 +56,10 @@ rules:
         keyGenerateStrategy:
           column: id
           keyGeneratorName: snowflake
+
+      # target_data 配置为普通表（非分片）
+      target_data:
+        actualDataNodes: ds1.target_data
       
 
     # 绑定表关系（避免笛卡尔积查询）
@@ -58,7 +80,7 @@ rules:
         props:
           algorithmClassName: com.datastream.algorithm.CommonTimeShardingAlgorithm
           tablePrefix: source_data_
-          strategy: STANDARD # STANDARD:标准分片策略, COMPLEX:复合分片策略, HINT:强制路由策略
+          strategy: STANDARD # STANDARD:标准分片策略，COMPLEX:复合分片策略，HINT:强制路由策略
           custom-strategy: DAY
           shardingColumn: business_time
 

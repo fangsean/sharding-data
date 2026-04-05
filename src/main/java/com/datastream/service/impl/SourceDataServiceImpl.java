@@ -66,12 +66,12 @@ public class SourceDataServiceImpl extends ServiceImpl<SourceDataMapper, SourceD
     public List<SourceData> listByUserCodeAndTimeRange(String userCode, LocalDateTime startTime, LocalDateTime endTime) {
         log.info("根据用户编码和时间范围查询：userCode={}, startTime={}, endTime={}", userCode, startTime, endTime);
         
-        LambdaQueryWrapper<SourceData> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SourceData::getUserCode, userCode)
-               .ge(SourceData::getBusinessTime, startTime)
-               .le(SourceData::getBusinessTime, endTime)
-               .orderByDesc(SourceData::getBusinessTime);
-        
-        return this.list(wrapper);
+//        LambdaQueryWrapper<SourceData> wrapper = new LambdaQueryWrapper<>();
+//        wrapper.eq(SourceData::getUserCode, userCode)
+//               .ge(SourceData::getBusinessTime, startTime)
+//               .le(SourceData::getBusinessTime, endTime)
+//               .orderByDesc(SourceData::getBusinessTime);
+//        return this.list(wrapper);
+        return sourceDataMapper.selectByUserCodeAndTimeRange(userCode, startTime, endTime);
     }
 }
